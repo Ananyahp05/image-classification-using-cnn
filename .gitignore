@@ -1,0 +1,28 @@
+# Data files (too large for GitHub)
+data/cifar-10-python.tar.gz
+data/cifar-10-batches-py/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+env/
+venv/
+.venv/
+
+# User uploads
+uploads/
+
+# PyTorch model files (optional - remove if you want to track)
+# *.pth
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
