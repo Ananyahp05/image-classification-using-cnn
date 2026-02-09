@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CNN Image Classifier - CIFAR-10</title>
+    <meta name="description" content="Classify images using a Convolutional Neural Network trained on CIFAR-10 dataset. Supports airplane, automobile, bird, cat, deer, dog, frog, horse, ship, and truck classification.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">🧠</span>
+                <h1>CNN Image Classifier</h1>
+            </div>
+            <p class="subtitle">Powered by CIFAR-10 • Deep Learning Classification</p>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div class="upload-card glass-card">
+                    <div id="drop-zone" class="drop-zone">
+                        <div class="drop-zone-content">
+                            <div class="upload-icon">📷</div>
+                            <h3>Drop your image here</h3>
+                            <p>or click to browse</p>
+                            <span class="file-types">Supports: PNG, JPG, JPEG, GIF, BMP, WEBP</span>
+                        </div>
+                        <input type="file" id="file-input" accept="image/*" hidden>
+                    </div>
+                    
+                    <!-- Image Preview -->
+                    <div id="preview-container" class="preview-container hidden">
+                        <img id="image-preview" src="" alt="Preview">
+                        <button id="clear-btn" class="clear-btn">✕</button>
+                    </div>
+                    
+                    <!-- Classify Button -->
+                    <button id="classify-btn" class="classify-btn hidden">
+                        <span class="btn-text">Classify Image</span>
+                        <span class="btn-loader hidden"></span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="results-section" class="results-section hidden">
+                <div class="results-card glass-card">
+                    <h2>Classification Results</h2>
+                    
+                    <!-- Main Prediction -->
+                    <div class="main-prediction">
+                        <div class="prediction-label">
+                            <span class="prediction-icon" id="prediction-icon">🎯</span>
+                            <span class="prediction-class" id="prediction-class">-</span>
+                        </div>
+                        <div class="confidence-display">
+                            <div class="confidence-bar-container">
+                                <div class="confidence-bar" id="confidence-bar"></div>
+                            </div>
+                            <span class="confidence-value" id="confidence-value">0%</span>
+                        </div>
+                    </div>
+                    
+                    <!-- All Probabilities -->
+                    <div class="all-probabilities">
+                        <h3>All Class Probabilities</h3>
+                        <div id="probabilities-list" class="probabilities-list">
+                            <!-- Dynamically filled -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Supported Classes -->
+            <section class="classes-section">
+                <div class="classes-card glass-card">
+                    <h3>Supported Classes</h3>
+                    <div class="classes-grid">
+                        <div class="class-item"><span class="class-emoji">✈️</span>Airplane</div>
+                        <div class="class-item"><span class="class-emoji">🚗</span>Automobile</div>
+                        <div class="class-item"><span class="class-emoji">🐦</span>Bird</div>
+                        <div class="class-item"><span class="class-emoji">🐱</span>Cat</div>
+                        <div class="class-item"><span class="class-emoji">🦌</span>Deer</div>
+                        <div class="class-item"><span class="class-emoji">🐕</span>Dog</div>
+                        <div class="class-item"><span class="class-emoji">🐸</span>Frog</div>
+                        <div class="class-item"><span class="class-emoji">🐴</span>Horse</div>
+                        <div class="class-item"><span class="class-emoji">🚢</span>Ship</div>
+                        <div class="class-item"><span class="class-emoji">🚚</span>Truck</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Built with PyTorch & Flask • CNN trained on CIFAR-10 dataset</p>
+        </footer>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="error-toast" class="toast error-toast hidden">
+        <span id="error-message"></span>
+        <button class="toast-close" onclick="hideError()">✕</button>
+    </div>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const clearBtn = document.getElementById('clear-btn');
+        const classifyBtn = document.getElementById('classify-btn');
+        const resultsSection = document.getElementById('results-section');
+        const predictionClass = document.getElementById('prediction-class');
+        const predictionIcon = document.getElementById('prediction-icon');
+        const confidenceBar = document.getElementById('confidence-bar');
+        const confidenceValue = document.getElementById('confidence-value');
+        const probabilitiesList = document.getElementById('probabilities-list');
+        const errorToast = document.getElementById('error-toast');
+        const errorMessage = document.getElementById('error-message');
+        
+        let selectedFile = null;
+
+        // Class emoji mapping
+        const classEmojis = {
+            'airplane': '✈️',
+            'automobile': '🚗',
+            'bird': '🐦',
+            'cat': '🐱',
+            'deer': '🦌',
+            'dog': '🐕',
+            'frog': '🐸',
+            'horse': '🐴',
+            'ship': '🚢',
+            'truck': '🚚'
+        };
+
+        // Event Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        clearBtn.addEventListener('click', clearImage);
+        classifyBtn.addEventListener('click', classifyImage);
+
+        // Functions
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please select a valid image file.');
+                return;
+            }
+            
+            selectedFile = file;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                dropZone.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                classifyBtn.classList.remove('hidden');
+                resultsSection.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearImage() {
+            selectedFile = null;
+            fileInput.value = '';
+            imagePreview.src = '';
+            previewContainer.classList.add('hidden');
+            dropZone.classList.remove('hidden');
+            classifyBtn.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+        }
+
+        async function classifyImage() {
+            if (!selectedFile) {
+                showError('Please select an image first.');
+                return;
+            }
+            
+            // Show loading state
+            const btnText = classifyBtn.querySelector('.btn-text');
+            const btnLoader = classifyBtn.querySelector('.btn-loader');
+            btnText.textContent = 'Classifying...';
+            btnLoader.classList.remove('hidden');
+            classifyBtn.disabled = true;
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                displayResults(data);
+                
+            } catch (error) {
+                showError('Failed to classify image. Please try again.');
+                console.error(error);
+            } finally {
+                btnText.textContent = 'Classify Image';
+                btnLoader.classList.add('hidden');
+                classifyBtn.disabled = false;
+            }
+        }
+
+        function displayResults(data) {
+            // Show results section
+            resultsSection.classList.remove('hidden');
+            
+            // Update main prediction
+            predictionClass.textContent = data.predicted_class.charAt(0).toUpperCase() + 
+                                         data.predicted_class.slice(1);
+            predictionIcon.textContent = classEmojis[data.predicted_class] || '🎯';
+            
+            // Animate confidence bar
+            setTimeout(() => {
+                confidenceBar.style.width = `${data.confidence}%`;
+                confidenceValue.textContent = `${data.confidence}%`;
+            }, 100);
+            
+            // Update all probabilities
+            probabilitiesList.innerHTML = '';
+            for (const [className, probability] of Object.entries(data.all_probabilities)) {
+                const item = document.createElement('div');
+                item.className = 'probability-item';
+                item.innerHTML = `
+                    <div class="prob-label">
+                        <span class="prob-emoji">${classEmojis[className] || '📦'}</span>
+                        <span class="prob-name">${className.charAt(0).toUpperCase() + className.slice(1)}</span>
+                    </div>
+                    <div class="prob-bar-container">
+                        <div class="prob-bar" style="width: ${probability}%"></div>
+                    </div>
+                    <span class="prob-value">${probability}%</span>
+                `;
+                probabilitiesList.appendChild(item);
+            }
+            
+            // Scroll to results
+            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorToast.classList.remove('hidden');
+            setTimeout(hideError, 5000);
+        }
+
+        function hideError() {
+            errorToast.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
