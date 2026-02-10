@@ -23,8 +23,9 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# Load model
+# Load model at module level (required for gunicorn/Render)
 model = None
+load_model_called = False
 
 
 def load_model():
@@ -153,14 +154,17 @@ def health():
     })
 
 
+# Load model at import time so gunicorn/Render can use it
+load_model()
+print("\n" + "="*50)
+print("CNN Image Classifier - Flask App")
+print("="*50)
+print(f"Device: {device}")
+print(f"Classes: {', '.join(CNN.CLASSES)}")
+print("="*50)
+
 if __name__ == '__main__':
-    load_model()
-    print("\n" + "="*50)
-    print("CNN Image Classifier - Flask App")
-    print("="*50)
-    print(f"Device: {device}")
-    print(f"Classes: {', '.join(CNN.CLASSES)}")
-    print("="*50)
-    print("\nStarting server at http://127.0.0.1:5000")
+    port = int(os.environ.get('PORT', 5000))
+    print(f"\nStarting server at http://0.0.0.0:{port}")
     print("Press Ctrl+C to stop\n")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=port)
